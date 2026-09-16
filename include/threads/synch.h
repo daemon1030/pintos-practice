@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 /* A counting semaphore. */
+// 하나를 기다리고 있는 스레드가 꺠어나게 하는 구조체
 struct semaphore {
 	unsigned value;             /* Current value. */
 	struct list waiters;        /* List of waiting threads. */

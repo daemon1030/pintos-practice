@@ -111,6 +111,7 @@ static void pic_end_of_interrupt (int irq);
 void intr_handler (struct intr_frame *args);
 
 /* Returns the current interrupt status. */
+// 인터럽트가 켜져 있는지 꺼져 있는지 확인하는 함수
 enum intr_level
 intr_get_level (void) {
 	uint64_t flags;
@@ -132,6 +133,7 @@ intr_set_level (enum intr_level level) {
 }
 
 /* Enables interrupts and returns the previous interrupt status. */
+// 인터럽트를 활성화하고 이전 인터럽트 상태를 반환하는 함수
 enum intr_level
 intr_enable (void) {
 	enum intr_level old_level = intr_get_level ();
@@ -254,6 +256,7 @@ intr_register_int (uint8_t vec_no, int dpl, enum intr_level level,
 
 /* Returns true during processing of an external interrupt
    and false at all other times. */
+   // 일반 스레드의 일을 하는 중인가, 아니면 인터럽트 때문에 잠깐 끼어든 일을 처리 중인지 확인
 bool
 intr_context (void) {
 	return in_external_intr;
@@ -263,6 +266,7 @@ intr_context (void) {
    interrupt handler to yield to a new process just before
    returning from the interrupt.  May not be called at any other
    time. */
+   // 
 void
 intr_yield_on_return (void) {
 	ASSERT (intr_context ());

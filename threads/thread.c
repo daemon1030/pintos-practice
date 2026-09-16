@@ -71,12 +71,14 @@ static tid_t allocate_tid (void);
  * down to the start of a page.  Since `struct thread' is
  * always at the beginning of a page and the stack pointer is
  * somewhere in the middle, this locates the curent thread. */
+// 현재 실행중인 thread의 struct thread*를 반환하는 매크로
 #define running_thread() ((struct thread *) (pg_round_down (rrsp ())))
 
 
 // Global descriptor table for the thread_start.
 // Because the gdt will be setup after the thread_init, we should
 // setup temporal gdt first.
+// CPU가 0, 커널의 실행할 코드에 대한 규칙의 주소, 커널의 데이터와 스택에 대한 규칙의 주소 설정 (RAM에)
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
 /* Initializes the threading system by transforming the code
@@ -92,6 +94,7 @@ static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
    It is not safe to call thread_current() until this function
    finishes. */
+   // 인터럽트가 꺼졌을 때만 실행되는 스레드 초기화 함수
 void
 thread_init (void) {
 	ASSERT (intr_get_level () == INTR_OFF);
@@ -99,6 +102,7 @@ thread_init (void) {
 	/* Reload the temporal gdt for the kernel
 	 * This gdt does not include the user context.
 	 * The kernel will rebuild the gdt with user context, in gdt_init (). */
+	// gdt에 대해 알려줘 규칙들을 알도록 함
 	struct desc_ptr gdt_ds = {
 		.size = sizeof (gdt) - 1,
 		.address = (uint64_t) gdt
@@ -106,6 +110,7 @@ thread_init (void) {
 	lgdt (&gdt_ds);
 
 	/* Init the globla thread context */
+	// TID 번호를 발급해주는 락, 대기 큐, 끝난 스레드 보관소 (안전해지면 삭제) 생성
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
@@ -119,6 +124,7 @@ thread_init (void) {
 
 /* Starts preemptive thread scheduling by enabling interrupts.
    Also creates the idle thread. */
+   // 스레드를 시작하는 함수
 void
 thread_start (void) {
 	/* Create the idle thread. */
@@ -135,6 +141,7 @@ thread_start (void) {
 
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
+   // tick을 증가시키는 함수, 타임슬라이스가 끝나면 스케줄링을 요청하는 함수
 void
 thread_tick (void) {
 	struct thread *t = thread_current ();
@@ -147,7 +154,7 @@ thread_tick (void) {
 		user_ticks++;
 #endif
 	else
-		kernel_ticks++;
+		kernel_ticks++; 
 
 	/* Enforce preemption. */
 	if (++thread_ticks >= TIME_SLICE)
@@ -155,6 +162,7 @@ thread_tick (void) {
 }
 
 /* Prints thread statistics. */
+// tick 정보를 출력하는 함수
 void
 thread_print_stats (void) {
 	printf ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
@@ -176,6 +184,7 @@ thread_print_stats (void) {
    The code provided sets the new thread's `priority' member to
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
+   // 스레드를 생성
 tid_t
 thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
@@ -216,6 +225,7 @@ thread_create (const char *name, int priority,
    This function must be called with interrupts turned off.  It
    is usually a better idea to use one of the synchronization
    primitives in synch.h. */
+   // 현재 실행 중인 스레드를 대기로 잠재우는 함수 (I/O, 락 등)
 void
 thread_block (void) {
 	ASSERT (!intr_context ());
@@ -232,6 +242,7 @@ thread_block (void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
+   // 대기 중인 스레드를 깨우는 함수
 void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
@@ -246,6 +257,7 @@ thread_unblock (struct thread *t) {
 }
 
 /* Returns the name of the running thread. */
+// 돌고 있는 스레드의 이름을 반환하는 함수
 const char *
 thread_name (void) {
 	return thread_current ()->name;
@@ -254,6 +266,7 @@ thread_name (void) {
 /* Returns the running thread.
    This is running_thread() plus a couple of sanity checks.
    See the big comment at the top of thread.h for details. */
+   // 현재 실행중인 thread의 struct thread*를 반환하는 함수
 struct thread *
 thread_current (void) {
 	struct thread *t = running_thread ();
@@ -270,6 +283,7 @@ thread_current (void) {
 }
 
 /* Returns the running thread's tid. */
+// 현재 돌아가는 스레드 tid를 반환하는 함수
 tid_t
 thread_tid (void) {
 	return thread_current ()->tid;
@@ -277,6 +291,7 @@ thread_tid (void) {
 
 /* Deschedules the current thread and destroys it.  Never
    returns to the caller. */
+   // 스레드를 종료하는 함수
 void
 thread_exit (void) {
 	ASSERT (!intr_context ());
@@ -294,6 +309,7 @@ thread_exit (void) {
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
+   // 현재 스레드를 yeild시키는 함수
 void
 thread_yield (void) {
 	struct thread *curr = thread_current ();
@@ -397,6 +413,7 @@ kernel_thread (thread_func *function, void *aux) {
 
 /* Does basic initialization of T as a blocked thread named
    NAME. */
+   // 스레드 초기화 함수
 static void
 init_thread (struct thread *t, const char *name, int priority) {
 	ASSERT (t != NULL);
@@ -577,6 +594,7 @@ schedule (void) {
 }
 
 /* Returns a tid to use for a new thread. */
+// tid_t를 생성하는 함수
 static tid_t
 allocate_tid (void) {
 	static tid_t next_tid = 1;

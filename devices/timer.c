@@ -32,12 +32,16 @@ static void real_time_sleep (int64_t num, int32_t denom);
 /* Sets up the 8254 Programmable Interval Timer (PIT) to
    interrupt PIT_FREQ times per second, and registers the
    corresponding interrupt. */
+
+// timer를 초기화하는 함수
 void
 timer_init (void) {
 	/* 8254 input frequency divided by TIMER_FREQ, rounded to
 	   nearest. */
 	uint16_t count = (1193180 + TIMER_FREQ / 2) / TIMER_FREQ;
 
+	// x86에서 I/O 포트에 1바이트를 쓰는 함수 (장치의 포트번호, 쓸 값)
+	// PIT의 값을 설정하는 명령어를 보내는 부분
 	outb (0x43, 0x34);    /* CW: counter 0, LSB then MSB, mode 2, binary. */
 	outb (0x40, count & 0xff);
 	outb (0x40, count >> 8);
@@ -71,6 +75,7 @@ timer_calibrate (void) {
 }
 
 /* Returns the number of timer ticks since the OS booted. */
+// OS에서 부팅한 이후로 경과한 timer tick 수를 반환하는 함수
 int64_t
 timer_ticks (void) {
 	enum intr_level old_level = intr_disable ();
@@ -82,28 +87,33 @@ timer_ticks (void) {
 
 /* Returns the number of timer ticks elapsed since THEN, which
    should be a value once returned by timer_ticks(). */
+   // timer_ticks()에서 반환된 값 이후로 경과한 timer tick 수를 반환하는 함수
 int64_t
 timer_elapsed (int64_t then) {
 	return timer_ticks () - then;
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+// 스레드의 실행을 TICKS만큼의 timer tick 동안 중단시키는 함수 (현재는 busy waiting으로 구현되어 있음)
 void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 
 	ASSERT (intr_get_level () == INTR_ON);
 	while (timer_elapsed (start) < ticks)
+	// TODO : block을 사용하는 것으로 수정해야함
 		thread_yield ();
 }
 
 /* Suspends execution for approximately MS milliseconds. */
+// ms동안 스레드의 실행을 중단시키는 함수
 void
 timer_msleep (int64_t ms) {
 	real_time_sleep (ms, 1000);
 }
 
 /* Suspends execution for approximately US microseconds. */
+// us동안 스레드의 실행을 중단시키는 함수
 void
 timer_usleep (int64_t us) {
 	real_time_sleep (us, 1000 * 1000);
@@ -116,6 +126,7 @@ timer_nsleep (int64_t ns) {
 }
 
 /* Prints timer statistics. */
+// timer 정보를 출력하는 함수
 void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
