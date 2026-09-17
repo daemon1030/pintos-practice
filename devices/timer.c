@@ -29,6 +29,9 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 
+// 스레드가 sleep이 되었을 때, 깨어나야 하는 tick을 저장하는 구조체
+static struct list sleep_list;
+
 /* Sets up the 8254 Programmable Interval Timer (PIT) to
    interrupt PIT_FREQ times per second, and registers the
    corresponding interrupt. */
@@ -46,6 +49,8 @@ timer_init (void) {
 	outb (0x40, count & 0xff);
 	outb (0x40, count >> 8);
 
+	// sleep_list를 초기화하고, timer 인터럽트를 등록하는 부분
+	list_init(&sleep_list);
 	intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
 
@@ -97,12 +102,16 @@ timer_elapsed (int64_t then) {
 // 스레드의 실행을 TICKS만큼의 timer tick 동안 중단시키는 함수 (현재는 busy waiting으로 구현되어 있음)
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
-
+	// TODO : block을 사용하는 것으로 수정함
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-	// TODO : block을 사용하는 것으로 수정해야함
-		thread_yield ();
+	if(ticks>0){
+		enum intr_level old_level = intr_disable();
+		int64_t start = timer_ticks ();
+		thread_current()->wakeup_tick = start + ticks;
+		list_push_back(&sleep_list, &thread_current()->elem);
+		thread_block();
+		intr_set_level(old_level);
+	}
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -133,9 +142,19 @@ timer_print_stats (void) {
 }
 
 /* Timer interrupt handler. */
+// 타이머 인터럽트를 진행하는 함수
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
+
+	if(!list_empty(&sleep_list)){
+		size_t size = list_size(&sleep_list);
+		for(int i=0; i<size; i++){
+			if()
+		}
+		struct list *wake_list = list_pop_front(&sleep_list);
+
+	}
 	thread_tick ();
 }
 
